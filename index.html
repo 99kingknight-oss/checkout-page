@@ -124,6 +124,11 @@
             background: #0052cc;
         }
 
+        .pay-btn.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
         .footer {
             text-align: center;
             margin-top: 20px;
@@ -139,6 +144,14 @@
             margin: 20px 0 0 0;
             border: none;
             border-top: 1px solid #e9ecef;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 16px;
+            display: none;
         }
     </style>
 </head>
@@ -203,7 +216,8 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="pay-btn">Continue to Payment →</button>
+                    <button type="submit" class="pay-btn" id="payBtn">Continue to Payment →</button>
+                    <div id="errorMsg" class="error-message"></div>
                 </form>
 
                 <hr>
@@ -218,18 +232,18 @@
     </div>
 
     <script>
+        // PayRam API Configuration
+        const API_URL = "https://154.3.40.209/api/v1/payment";
+        const API_KEY = "48abcc9b0cb60f09091424851f7ad4ae";
+
         // Google Sheets Web App URL
         const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbysXY9g8PW26PVijzyym6cHfljSXsxIf1rQDcSGbYhxlRYEnqYHuv9dQpv_CBldUHE0ag/exec";
 
-        // Save to Google Sheets
         async function logToSheet(data) {
             try {
                 await fetch(GOOGLE_SHEET_URL, {
                     method: "POST",
                     mode: "no-cors",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
                     body: JSON.stringify({
                         firstname: data.firstname,
                         lastname: data.lastname,
@@ -243,17 +257,44 @@
                         status: "pending"
                     })
                 });
-                console.log("Customer data sent to Google Sheets");
             } catch (err) {
-                console.log("Google Sheets error:", err);
+                console.log("Sheet error:", err);
             }
         }
 
-        // Form submit
+        async function createPaymentLink(amount, email, name) {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "API-Key": API_KEY
+                },
+                body: JSON.stringify({
+                    amountInUSD: parseFloat(amount),
+                    customerEmail: email,
+                    customerName: name
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API error: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            return data.url; // The payment page URL
+        }
+
         document.getElementById("payment-form").addEventListener("submit", async function(e) {
             e.preventDefault();
-            
-            // Get form data
+
+            const btn = document.getElementById("payBtn");
+            const errorDiv = document.getElementById("errorMsg");
+
+            btn.textContent = "Creating payment link...";
+            btn.classList.add("loading");
+            errorDiv.style.display = "none";
+
             const data = {
                 firstname: document.getElementById("firstname").value,
                 lastname: document.getElementById("lastname").value,
@@ -265,14 +306,24 @@
                 phone: document.getElementById("phone").value,
                 amount: document.getElementById("amount").value
             };
-            
-            // Send to Google Sheets
-            await logToSheet(data);
-            
-            // Redirect to PayRam payment page
-            const fullName = data.firstname + " " + data.lastname;
-            const paymentUrl = `https://accountsdpt.online/pay?amount=${data.amount}&email=${encodeURIComponent(data.email)}&name=${encodeURIComponent(fullName)}`;
-            window.location.href = paymentUrl;
+
+            try {
+                // Log to Google Sheets
+                await logToSheet(data);
+
+                // Create payment link via API
+                const fullName = `${data.firstname} ${data.lastname}`;
+                const paymentUrl = await createPaymentLink(data.amount, data.email, fullName);
+
+                // Redirect to payment page
+                window.location.href = paymentUrl;
+            } catch (err) {
+                errorDiv.textContent = "Error creating payment. Please try again.";
+                errorDiv.style.display = "block";
+                btn.textContent = "Continue to Payment →";
+                btn.classList.remove("loading");
+                console.error(err);
+            }
         });
     </script>
 </body>
