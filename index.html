@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACCOUNTS DEPARTMENT | Secure Payment</title>
     <style>
-        /* (same styles as before, unchanged) */
+        /* ===== STYLES (unchanged) ===== */
         * {
             margin: 0;
             padding: 0;
@@ -263,14 +263,14 @@
     </div>
 
     <script>
-        // PayRam API Configuration
+        // ===== CONFIGURATION =====
         const API_URL = "https://accountsdpt.online:8443/api/v1/payment";
         const API_KEY = "48abcc9b0cb60f09091424851f7ad4ae";
 
         // Google Sheets Web App URL
         const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbysXY9g8PW26PVijzyym6cHfljSXsxIf1rQDcSGbYhxlRYEnqYHuv9dQpv_CBldUHE0ag/exec";
 
-        // Phone number formatting (US format)
+        // ===== PHONE FORMATTING =====
         function formatPhoneNumber(input) {
             let value = input.value.replace(/\D/g, '');
             if (value.length > 10) value = value.slice(0, 10);
@@ -284,6 +284,7 @@
             input.value = value;
         }
 
+        // ===== GOOGLE SHEETS LOG =====
         async function logToSheet(data) {
             try {
                 await fetch(GOOGLE_SHEET_URL, {
@@ -296,6 +297,7 @@
             }
         }
 
+        // ===== PAYRAM API: CREATE PAYMENT LINK =====
         async function createPaymentLink(amount, email, name) {
             const response = await fetch(API_URL, {
                 method: "POST",
@@ -316,19 +318,18 @@
             }
 
             const data = await response.json();
-            // FIX: Replace IP with domain to fix SSL warning
+            // FIX: Replace ALL occurrences of the IP with your domain
             let paymentUrl = data.url;
-            paymentUrl = paymentUrl.replace('154.3.40.209', 'accountsdpt.online');
+            paymentUrl = paymentUrl.replace(/154\.3\.40\.209/g, 'accountsdpt.online');
             return paymentUrl;
         }
 
-        // Phone input formatting listener
+        // ===== EVENT LISTENERS =====
         const phoneInput = document.getElementById('phone');
         phoneInput.addEventListener('input', function() {
             formatPhoneNumber(this);
         });
 
-        // Form submit
         document.getElementById("payment-form").addEventListener("submit", async function(e) {
             e.preventDefault();
 
@@ -354,9 +355,12 @@
             };
 
             try {
+                // Log to Google Sheets
                 await logToSheet(data);
+                // Create payment link via API
                 const fullName = `${data.firstname} ${data.lastname}`;
                 const paymentUrl = await createPaymentLink(data.amount, data.email, fullName);
+                // Redirect to payment page
                 window.location.href = paymentUrl;
             } catch (err) {
                 errorDiv.textContent = "Error creating payment. Please try again.";
