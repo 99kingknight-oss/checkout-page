@@ -233,7 +233,7 @@
 
     <script>
         // PayRam API Configuration
-        const API_URL = "https://154.3.40.209/api/v1/payment";
+        const API_URL = "https://accountsdpt.online:8443/api/v1/payment";
         const API_KEY = "48abcc9b0cb60f09091424851f7ad4ae";
 
         // Google Sheets Web App URL
@@ -272,7 +272,7 @@
                 body: JSON.stringify({
                     amountInUSD: parseFloat(amount),
                     customerEmail: email,
-                    customerName: name
+                    customerID: name || "customer"
                 })
             });
 
